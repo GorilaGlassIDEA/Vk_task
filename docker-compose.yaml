@@ -1,11 +1,9 @@
-version: '3.8'
-
 services:
-  tarantool:
-    image: tarantool/tarantool:2.11
+  tarantool-kv:
+    image: tarantool/tarantool:3.2.0
     container_name: tarantool-kv
     ports:
       - "3301:3301"
-    command: tarantool
-    stdin_open: true
-    tty: true
+    volumes:
+      - ./init.lua:/opt/tarantool/init.lua
+    command: tarantool /opt/tarantool/init.lua

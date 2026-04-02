@@ -1,0 +1,22 @@
+credentials:
+  users:
+    guest:
+      roles: [super]
+
+iproto:
+  listen:
+    - uri: '0.0.0.0:3301'
+console:
+  enabled: false
+
+database:
+  mode: rw
+
+groups:
+  default:
+    replicasets:
+      replicaset-001:
+        instances:
+          instance-001:
+            database:
+              mode: rw

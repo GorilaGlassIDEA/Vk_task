@@ -22,4 +22,9 @@ public class TarantoolCrudService {
         log.info("Tarantool put with key = {}", key);
     }
 
+    public byte[] callGet(String key) {
+        return repository.get(key).orElse(null);
+    }
+
+
 }
