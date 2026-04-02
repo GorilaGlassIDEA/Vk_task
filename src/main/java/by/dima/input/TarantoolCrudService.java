@@ -4,6 +4,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -26,5 +28,15 @@ public class TarantoolCrudService {
         return repository.get(key).orElse(null);
     }
 
+    public boolean callDelete(String key) {
+        boolean deleted = repository.delete(key);
+        log.info("Tarantool delete key={} success={}", key, deleted);
+        return deleted;
+    }
 
+    public List<TarantoolRepository.KeyValuePair> callRange(String keyStart, String keyEnd) {
+        List<TarantoolRepository.KeyValuePair> result = repository.range(keyStart, keyEnd);
+        log.info("Tarantool range from '{}' to '{}' returned {} records", keyStart, keyEnd, result.size());
+        return result;
+    }
 }

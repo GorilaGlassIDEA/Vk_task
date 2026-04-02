@@ -3,12 +3,15 @@ package by.dima.output;
 import by.dima.grpc.Api;
 import by.dima.grpc.ApiServiceGrpc;
 import by.dima.input.TarantoolCrudService;
+import by.dima.input.TarantoolRepository;
 import com.google.protobuf.ByteString;
 import io.grpc.stub.StreamObserver;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.devh.boot.grpc.server.service.GrpcService;
 import org.springframework.boot.info.BuildProperties;
+
+import java.util.List;
 
 @RequiredArgsConstructor
 @GrpcService
@@ -70,5 +73,49 @@ public class ApiServiceImpl extends ApiServiceGrpc.ApiServiceImplBase {
         Api.GetResponse response = responseBuilder.build();
         responseObserver.onNext(response);
         responseObserver.onCompleted();
+
+        log.info("GRPC layer: get key={} length_value={}", key, response.getValue().size());
+
+    }
+
+    @Override
+    public void delete(Api.DeleteRequest request, StreamObserver<Api.DeleteResponse> responseObserver) {
+        try {
+
+            String key = request.getKey();
+            boolean success = service.callDelete(key);
+
+            Api.DeleteResponse response = Api.DeleteResponse.newBuilder().setSuccess(success).build();
+            responseObserver.onNext(response);
+            responseObserver.onCompleted();
+
+            log.info("GRPC layer: delete key={} success={}", key, success);
+
+        } catch (Exception e) {
+            log.error("Error in delete key={}", request.getKey(), e);
+            responseObserver.onError(e);
+        }
+    }
+
+    @Override
+    public void range(Api.RangeRequest request, StreamObserver<Api.RangeResponse> responseObserver) {
+        String keyStart = request.getKeyStart();
+        String keyEnd = request.getKeyEnd();
+
+        try {
+
+            List<TarantoolRepository.KeyValuePair> pairs = service.callRange(keyStart, keyEnd);
+
+            for (TarantoolRepository.KeyValuePair pair : pairs) {
+                Api.RangeResponse response = Api.RangeResponse.newBuilder().setKey(pair.key()).setValue(
+                        pair.value() != null ? ByteString.copyFrom(pair.value()) : ByteString.EMPTY).build();
+                responseObserver.onNext(response);
+            }
+            responseObserver.onCompleted();
+            log.info("gRPC layer: range from '{}' to '{}' streamed {} items", keyStart, keyEnd, pairs.size());
+        } catch (Exception e) {
+            log.error("Error in range from {} to {}", keyStart, keyEnd, e);
+            responseObserver.onError(e);
+        }
     }
 }

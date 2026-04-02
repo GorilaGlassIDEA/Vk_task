@@ -8,6 +8,9 @@ import io.grpc.ManagedChannelBuilder;
 import java.nio.charset.StandardCharsets;
 
 public class TestFullGrpc {
+    /**
+     * Тест сгенерирован нейросетью
+     */
     public static void main(String[] args) {
         ManagedChannel channel = ManagedChannelBuilder
                 .forAddress("localhost", 9090)
