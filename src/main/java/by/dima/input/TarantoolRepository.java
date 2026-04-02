@@ -68,18 +68,15 @@ public class TarantoolRepository {
 
     public boolean delete(String key) {
         try {
-            String lua = String.format("return box.space['%s']:delete({...})~= nil", SPACE_NAME);
+            String lua = "return box.space.KV:delete({...}) ~= nil";
 
-            CompletableFuture<TarantoolResponse<List<?>>> future = client.eval(lua, List.of("key"));
-            List<?> result = future.get().get();
+            List<?> result = (List<?>) client.eval(lua, List.of(key)).get().get();
 
             boolean deleted = result != null && !result.isEmpty() && result.get(0) != null;
-            if (deleted) {
-                log.debug("Deleted key: {}", key);
-            } else {
-                log.debug("Key not found for delete: {}", key);
-            }
+
+            log.debug("Delete key={} success={}", key, deleted);
             return deleted;
+
         } catch (Exception e) {
             log.error("Failed to delete key: {}", key, e);
             throw new RuntimeException("Delete failed for key: " + key, e);
@@ -122,7 +119,16 @@ public class TarantoolRepository {
             throw new RuntimeException("Range query failed", e);
         }
     }
-
+    public void truncate() {
+        // !! For tests !!
+        try {
+            client.eval("box.space.KV:truncate()").get();
+            log.info("Space KV truncated");
+        } catch (Exception e) {
+            log.error("Failed to truncate", e);
+        }
+    }
     public record KeyValuePair(String key, byte[] value) {
     }
+
 }

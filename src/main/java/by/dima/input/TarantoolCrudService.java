@@ -25,7 +25,7 @@ public class TarantoolCrudService {
     }
 
     public byte[] callGet(String key) {
-        return repository.get(key).orElse(null);
+        return repository.get(key).orElse(new byte[0]);
     }
 
     public boolean callDelete(String key) {
