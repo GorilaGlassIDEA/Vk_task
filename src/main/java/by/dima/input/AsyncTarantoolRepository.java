@@ -20,7 +20,7 @@ public class AsyncTarantoolRepository {
     private final static String SPACE_NAME = "KV";
 
 
-    public CompletableFuture<Long> countAsync() {
+    public CompletableFuture<Long> count() {
         String lua = String.format("return box.space['%s']:count()", SPACE_NAME);
         return client.eval(lua)
                 .thenApply(TarantoolResponse::get)
@@ -36,7 +36,7 @@ public class AsyncTarantoolRepository {
                 });
     }
 
-    public CompletableFuture<Object> putAsync(String key, byte[] value) {
+    public CompletableFuture<Object> put(String key, byte[] value) {
         String lua = String.format("return box.space['%s']:replace({...})", SPACE_NAME);
         return client.eval(lua, List.of(key, value))
                 .thenApply(r -> null)
@@ -49,7 +49,7 @@ public class AsyncTarantoolRepository {
                 });
     }
 
-    public CompletableFuture<Optional<?>> getAsync(String key) {
+    public CompletableFuture<Optional<?>> get(String key) {
         String lua = String.format(
                 "local tuple = box.space['%s']:get({...}) return tuple and tuple[2] or nil",
                 SPACE_NAME
@@ -72,7 +72,7 @@ public class AsyncTarantoolRepository {
                 });
     }
 
-    public CompletableFuture<Boolean> deleteAsync(String key) {
+    public CompletableFuture<Boolean> delete(String key) {
         String lua = "return box.space.KV:delete({...}) ~= nil";
 
         return client.eval(lua, List.of(key))
@@ -88,7 +88,7 @@ public class AsyncTarantoolRepository {
                 });
     }
 
-    public CompletableFuture<List<?>> rangeAsync(String keyStart, String keyEnd, int limit) {
+    public CompletableFuture<List<?>> range(String keyStart, String keyEnd, int limit) {
         String lua = """
             local space = box.space['%s']
             local result = {}
@@ -134,11 +134,11 @@ public class AsyncTarantoolRepository {
                 });
     }
 
-    public CompletableFuture<List<?>> rangeAsync(String keyStart, String keyEnd) {
-        return rangeAsync(keyStart, keyEnd, 10000);
+    public CompletableFuture<List<?>> range(String keyStart, String keyEnd) {
+        return range(keyStart, keyEnd, 10000);
     }
 
-    public CompletableFuture<Object> truncateAsync() {
+    public CompletableFuture<Object> truncate() {
         return client.eval("box.space.KV:truncate()")
                 .thenApply(r -> null)
                 .whenComplete((v, e) -> {

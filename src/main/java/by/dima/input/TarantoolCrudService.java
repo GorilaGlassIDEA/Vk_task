@@ -5,38 +5,51 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class TarantoolCrudService {
 
-    private final TarantoolRepository repository;
+    private final AsyncTarantoolRepository repository;
 
-    public long callCount() {
-        long count = repository.count();
-        log.info("Tarantool count = {}", count);
-        return count;
+    public CompletableFuture<Long> callCount() {
+        return repository.count()
+                .thenApply(count -> {
+                    log.info("Tarantool count = {}", count);
+                    return count;
+                });
     }
 
-    public void callPut(String key, byte[] values) {
-        repository.put(key, values);
-        log.info("Tarantool put with key = {}", key);
+    public CompletableFuture<Void> callPut(String key, byte[] values) {
+        return repository.put(key, values)
+                .thenAccept(unused -> log.info("Tarantool put with key = {}", key));
     }
 
-    public byte[] callGet(String key) {
-        return repository.get(key).orElse(new byte[0]);
+    public CompletableFuture<byte[]> callGet(String key) {
+        return repository.get(key)
+                .thenApply(opt -> {
+                    byte[] result = (byte[]) opt.orElse(null);
+                    log.debug("Get key {}: found={} bytes", key, result.length);
+                    return result;
+                });
     }
 
-    public boolean callDelete(String key) {
-        boolean deleted = repository.delete(key);
-        log.info("Tarantool delete key={} success={}", key, deleted);
-        return deleted;
+    public CompletableFuture<Boolean> callDelete(String key) {
+        return repository.delete(key)
+                .thenApply(deleted -> {
+                    log.info("Tarantool delete key={} success={}", key, deleted);
+                    return deleted;
+                });
     }
 
-    public List<TarantoolRepository.KeyValuePair> callRange(String keyStart, String keyEnd) {
-        List<TarantoolRepository.KeyValuePair> result = repository.range(keyStart, keyEnd);
-        log.info("Tarantool range from '{}' to '{}' returned {} records", keyStart, keyEnd, result.size());
-        return result;
+
+    public CompletableFuture<List<AsyncTarantoolRepository.KeyValuePair>> callRange(String keyStart, String keyEnd) {
+        return repository.range(keyStart, keyEnd)
+                .thenApply(result -> {
+                    log.info("Tarantool range from '{}' to '{}' returned {} records", keyStart, keyEnd, result.size());
+                    return (List<AsyncTarantoolRepository.KeyValuePair>) (List<?>) result;
+                });
     }
 }
