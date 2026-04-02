@@ -1,5 +1,6 @@
 package by.dima;
 
+import by.dima.input.AsyncTarantoolRepository;
 import by.dima.input.TarantoolCrudService;
 import by.dima.input.TarantoolRepository;
 import lombok.extern.slf4j.Slf4j;
@@ -9,6 +10,9 @@ import org.springframework.boot.test.context.SpringBootTest;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -22,32 +26,42 @@ class LoadTest {
     @Autowired
     private TarantoolRepository repository;
 
+    @Autowired
+    private AsyncTarantoolRepository asyncRepo;
+
     private static final int COUNT = 1000;
     private static final String PREFIX = "test_key_";
 
+
     @Test
-    void testAllFunctionsWith1000Records() {
-        repository.truncate();
+    void testAllFunctionsWith1000Records() throws Exception {
+        asyncRepo.truncateAsync().get(10, TimeUnit.SECONDS);
+
+        CompletableFuture[] putFutures = new CompletableFuture[COUNT];
+
         for (int i = 0; i < COUNT; i++) {
             String key = PREFIX + i;
             byte[] value = ("value_" + i).getBytes(StandardCharsets.UTF_8);
-            service.callPut(key, value);
+            putFutures[i] = asyncRepo.putAsync(key, value);
         }
 
-        long count = service.callCount();
+        CompletableFuture.allOf(putFutures).get(30, TimeUnit.SECONDS);
+
+        long count = asyncRepo.countAsync().get(5, TimeUnit.SECONDS);
         assertEquals(COUNT, count, "Count after insert should be " + COUNT);
 
+        Optional<byte[]> valueOpt = (Optional<byte[]>) asyncRepo.getAsync(PREFIX + "42").get(5, TimeUnit.SECONDS);
+        assertTrue(valueOpt.isPresent());
+        assertEquals("value_42", new String(valueOpt.get(), StandardCharsets.UTF_8));
 
-        byte[] value = service.callGet(PREFIX + "42");
-        assertNotNull(value);
-        assertEquals("value_42", new String(value, StandardCharsets.UTF_8));
-
-
-        boolean deleted = service.callDelete(PREFIX + "100");
+        boolean deleted = asyncRepo.deleteAsync(PREFIX + "100").get(5, TimeUnit.SECONDS);
         assertTrue(deleted);
-        assertEquals(0, service.callGet(PREFIX + "100").length);
 
-        List<TarantoolRepository.KeyValuePair> rangeResult = service.callRange(PREFIX + "0", PREFIX + "200");
+        Optional<byte[]> afterDelete = (Optional<byte[]>) asyncRepo.getAsync(PREFIX + "100").get(5, TimeUnit.SECONDS);
+        assertTrue(afterDelete.isEmpty() || afterDelete.get().length == 0);
+        List<AsyncTarantoolRepository.KeyValuePair> rangeResult =
+                (List<AsyncTarantoolRepository.KeyValuePair>) asyncRepo.rangeAsync(PREFIX + "0", PREFIX + "200").get(10, TimeUnit.SECONDS);
+
         assertFalse(rangeResult.isEmpty());
         assertTrue(rangeResult.size() <= 201);
     }
